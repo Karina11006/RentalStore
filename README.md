@@ -67,25 +67,17 @@ The **API** is documented using **Swagger**, providing an interactive interface 
 
 4. ### Running the Application
 
-1. **Clone the repository** (choose one method):
 
-```bash
-
-```
-Or using SSH:
-
-```bash
-```
-2. **Install required packages**:
+1. **Install required packages**:
 
    - Open the solution and go to `Tools/Options/Nuget Package Manager`.
    - Set the **Package Source** to: `https://api.nuget.org/v3/index.json`.
 
-3. **Add the following Nuget packages** (for **.NET 6.0**, do not use versions higher than **7.0.16**):
+2. **Add the following Nuget packages** (for **.NET 6.0**, do not use versions higher than **7.0.16**):
    - `Microsoft.EntityFrameworkCore`
    - `Microsoft.EntityFrameworkCore.Sqlite`
 
-4. **Download a tool** for viewing the contents of **SQLite** databases, e.g., **DB Browser**.
+3. **Download a tool** for viewing the contents of **SQLite** databases, e.g., **DB Browser**.
 
 ## Authors
 * Karina Krotkiewicz (karina.krotkiewicz@gmail.com)
