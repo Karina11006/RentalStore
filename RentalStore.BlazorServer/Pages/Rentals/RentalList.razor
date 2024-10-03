@@ -1,0 +1,221 @@
+﻿@page "/rentals"
+@inject IRentalService _rentalService
+@inject IJSRuntime _js
+@inject NavigationManager _navigationManager
+@inject IToastService ToastService
+
+<PageTitle>Rental list</PageTitle>
+<h1>Rental list</h1>
+
+<div class="container">
+    <div class="row mb-3">
+        <div class="col-md-6">
+            <RadzenTextBox @bind-Value="_searchTerm" Placeholder="Search..." Change="@((string value) => ApplySearchFilter(value))" />
+        </div>
+        <div class="col-md-6 text-end">
+            <a href="/rentals/create" class="btn btn-primary"><span class="oi oi-plus" aria-hidden="true"></span> Create </a>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-md-12">
+            <div class="table-responsive">
+                <table class="table table-striped table-hover">
+                    <thead class="thead-dark">
+                        <tr>
+                            <th style="cursor: pointer;" @onclick="@(() => SortColumn(nameof(RentalDto.RentalId)))">
+                                Rental Id
+                                @RenderSortIcon(nameof(RentalDto.RentalId))
+                            </th>
+                            <th style="cursor: pointer;" @onclick="@(() => SortColumn(nameof(RentalDto.RentalDate)))">
+                                Rental Date
+                                @RenderSortIcon(nameof(RentalDto.RentalDate))
+                            </th>
+                            <th style="cursor: pointer;" @onclick="@(() => SortColumn(nameof(RentalDto.ReturnDate)))">
+                                Return Date
+                                @RenderSortIcon(nameof(RentalDto.ReturnDate))
+                            </th>
+                            <th style="cursor: pointer;" @onclick="@(() => SortColumn(nameof(RentalDto.CustomerName)))">
+                                Customer Name
+                                @RenderSortIcon(nameof(RentalDto.CustomerName))
+                            </th>
+                            <th style="cursor: pointer;" @onclick="@(() => SortColumn(nameof(RentalDto.CustomerSurname)))">
+                                Customer Surname
+                                @RenderSortIcon(nameof(RentalDto.CustomerSurname))
+                            </th>
+                            <th style="cursor: pointer;" @onclick="@(() => SortColumn(nameof(RentalDto.CustomerEmail)))">
+                                Customer Email
+                                @RenderSortIcon(nameof(RentalDto.CustomerEmail))
+                            </th>
+                            <th style="cursor: pointer;" @onclick="@(() => SortColumn(nameof(RentalDto.CustomerPhone)))">
+                                Customer Phone
+                                @RenderSortIcon(nameof(RentalDto.CustomerPhone))
+                            </th>
+                            <th style="cursor: pointer;" @onclick="@(() => SortColumn(nameof(RentalDto.Total)))">
+                                Total
+                                @RenderSortIcon(nameof(RentalDto.Total))
+                            </th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var r in _filteredRentals.Skip((_currentPage - 1) * _pageSize).Take(_pageSize))
+                        {
+                            <tr>
+                                <td>@r.RentalId</td>
+                                <td>@r.RentalDate.ToShortDateString()</td>
+                                <td>@r.ReturnDate.ToShortDateString()</td>
+                                <td>@r.CustomerName</td>
+                                <td>@r.CustomerSurname</td>
+                                <td>@r.CustomerEmail</td>
+                                <td>@r.CustomerPhone</td>
+                                <td>@r.Total.ToString("C")</td>
+                                <td>
+                                    <button class="btn btn-danger" @onclick="()=>DeleteRental(r.RentalId)">
+                                        <span class="oi oi-trash" aria-hidden="true"></span>
+                                        Delete
+                                    </button>
+                                    <button class="btn btn-warning" @onclick="@(()=>EditRental(r.RentalId))">
+                                        <span class="oi oi-pencil" aria-hidden="true"></span>
+                                        Edit
+                                    </button>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+            <div class="d-flex justify-content-between">
+                <button class="btn btn-secondary" @onclick="PrevPage" disabled="@(_currentPage == 1)">Previous</button>
+                <button class="btn btn-secondary" @onclick="NextPage" disabled="@(_currentPage == _totalPages)">Next</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    private IList<RentalDto> _rentalList = null;
+    private IList<RentalDto> _filteredRentals = null;
+    private string _searchTerm = "";
+    private string _sortColumn = null;
+    private bool _sortAscending = true;
+    private int _currentPage = 1;
+    private int _pageSize = 10;
+    private int _totalPages => (int)Math.Ceiling((double)_filteredRentals.Count / _pageSize);
+
+    protected override void OnInitialized()
+    {
+        base.OnInitialized();
+        _rentalList = _rentalService.GetAll();
+        _filteredRentals = _rentalList.ToList(); 
+    }
+
+    protected async Task DeleteRental(int id)
+    {
+        var rental = _rentalList.FirstOrDefault(q => q.RentalId == id);
+        if (rental != null)
+        {
+            var confirm = await _js.InvokeAsync<bool>("confirm", $"Are You Sure You Want To Delete Rental Id {rental.RentalId}?");
+            if (confirm)
+            {
+                _rentalService.Delete(id);
+                ToastService.ShowInfo($"Rental {rental.RentalId} have been removed");
+                RefreshList();
+            }
+        }
+    }
+
+    protected void EditRental(int id)
+    {
+        _navigationManager.NavigateTo($"rentals/edit/{id}");
+    }
+
+    protected void AddRental()
+    {
+        _navigationManager.NavigateTo("/rentals/create");
+    }
+
+    private void RefreshList()
+    {
+        _rentalList = _rentalService.GetAll();
+        ApplySearchFilter(_searchTerm);
+        ApplySorting(); 
+    }
+
+    private void ApplySearchFilter(string value)
+    {
+        _searchTerm = value?.Trim() ?? "";
+
+        if (string.IsNullOrWhiteSpace(_searchTerm))
+        {
+            _filteredRentals = _rentalList.ToList();
+        }
+        else
+        {
+            _filteredRentals = _rentalList.Where(r =>
+                r.RentalId.ToString().Contains(_searchTerm, StringComparison.OrdinalIgnoreCase) ||
+                r.CustomerName.Contains(_searchTerm, StringComparison.OrdinalIgnoreCase) ||
+                r.CustomerSurname.Contains(_searchTerm, StringComparison.OrdinalIgnoreCase) ||
+                r.CustomerEmail.Contains(_searchTerm, StringComparison.OrdinalIgnoreCase) ||
+                r.CustomerPhone.Contains(_searchTerm, StringComparison.OrdinalIgnoreCase)
+            ).ToList();
+        }
+
+        ApplySorting();
+    }
+
+    private void ApplySorting()
+    {
+        if (!string.IsNullOrEmpty(_sortColumn))
+        {
+            _filteredRentals = _sortAscending ?
+                _filteredRentals.OrderBy(r => GetPropertyValue(r, _sortColumn)).ToList() :
+                _filteredRentals.OrderByDescending(r => GetPropertyValue(r, _sortColumn)).ToList();
+        }
+    }
+
+    private object GetPropertyValue(RentalDto rental, string propertyName)
+    {
+        return rental.GetType().GetProperty(propertyName)?.GetValue(rental, null);
+    }
+
+    private void SortColumn(string columnName)
+    {
+        if (columnName == _sortColumn)
+        {
+            _sortAscending = !_sortAscending;
+        }
+        else
+        {
+            _sortColumn = columnName;
+            _sortAscending = true;
+        }
+
+        ApplySorting();
+    }
+
+    private string RenderSortIcon(string columnName)
+    {
+        if (columnName == _sortColumn)
+        {
+            return _sortAscending ? "↑" : "↓";
+        }
+        return "";
+    }
+
+    private void PrevPage()
+    {
+        if (_currentPage > 1)
+        {
+            _currentPage--;
+        }
+    }
+
+    private void NextPage()
+    {
+        if (_currentPage < _totalPages)
+        {
+            _currentPage++;
+        }
+    }
+}

@@ -1,0 +1,148 @@
+﻿@page "/rentals/create"
+@inject IRentalService _rentalService
+@inject NavigationManager _navigationManager
+@inject IToastService ToastService
+
+<PageTitle>Create Rental</PageTitle>
+
+<h1>Create Rental</h1>
+
+<div class="card">
+    <div class="card-header">
+        Rental Information
+    </div>
+    <div class="card-body">
+        <EditForm Model="@_rental" OnValidSubmit="@CreateRental">
+            <FluentValidationValidator @ref="_fluentValidationValidator" DisableAssemblyScanning="@true" />
+            <DataAnnotationsValidator />
+            <ValidationSummary />
+
+            <div class="form-group mb-3">
+                <label for="rentalDate">Rental Date:</label>
+                <InputDate id="rentalDate" @bind-Value="@_rental.RentalDate" class="form-control" />
+                <ValidationMessage For="@(() => _rental.RentalDate)" />
+            </div>
+
+            <div class="form-group mb-3">
+                <label for="returnDate">Return Date:</label>
+                <InputDate id="returnDate" @bind-Value="@_rental.ReturnDate" class="form-control" />
+                <ValidationMessage For="@(() => _rental.ReturnDate)" />
+            </div>
+
+            <div class="form-group mb-3">
+                <label for="status">Status:</label>
+                <InputSelect id="status" @bind-Value="@_rental.Status" class="form-control">
+                    <option value="Active">Active</option>
+                    <option value="Completed">Completed</option>
+                    <option value="Canceled">Canceled</option>
+                    <option value="Overdue">Overdue</option>
+                </InputSelect>
+                <ValidationMessage For="@(() => _rental.Status)" />
+            </div>
+
+            <div class="form-group mb-3">
+                <label for="customerName">Customer Name:</label>
+                <InputText id="customerName" @bind-Value="@_rental.CustomerName" class="form-control" />
+                <ValidationMessage For="@(() => _rental.CustomerName)" />
+            </div>
+
+            <div class="form-group mb-3">
+                <label for="customerSurname">Customer Surname:</label>
+                <InputText id="customerSurname" @bind-Value="@_rental.CustomerSurname" class="form-control" />
+                <ValidationMessage For="@(() => _rental.CustomerSurname)" />
+            </div>
+
+            <div class="form-group mb-3">
+                <label for="customerEmail">Customer Email:</label>
+                <InputText id="customerEmail" @bind-Value="@_rental.CustomerEmail" class="form-control" />
+                <ValidationMessage For="@(() => _rental.CustomerEmail)" />
+            </div>
+
+            <div class="form-group mb-3">
+                <label for="customerPhone">Customer Phone:</label>
+                <InputText id="customerPhone" @bind-Value="@_rental.CustomerPhone" class="form-control" />
+                <ValidationMessage For="@(() => _rental.CustomerPhone)" />
+            </div>
+
+            <div class="form-group mb-3">
+                <label for="total">Total:</label>
+                <InputNumber id="total" @bind-Value="@_rental.Total" class="form-control" />
+                <ValidationMessage For="@(() => _rental.Total)" />
+            </div>
+
+            <div class="card mt-4">
+                <div class="card-header">
+                    Rental Details
+                </div>
+                <div class="card-body">
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>Count</th>
+                                <th>Equipment Id</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var detail in _rental.Details)
+                            {
+                                <tr>
+                                    <td>
+                                        <InputNumber @bind-Value="detail.Count" class="form-control" />
+                                    </td>
+                                    <td>
+                                        <InputNumber @bind-Value="detail.EquipmentId" class="form-control" />
+                                    </td>
+                                    <td>
+                                        <button @onclick="() => RemoveDetail(detail)" class="btn btn-danger" type="button">
+                                            <span class="oi oi-trash" /> Remove
+                                        </button>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                    <button @onclick="AddDetail" class="btn btn-primary" type="button">
+                        <span class="oi oi-plus" /> Add Detail
+                    </button>
+                </div>
+            </div>
+
+            <div class="form-group mt-4">
+                <button class="btn btn-primary" type="submit">
+                    <span class="oi oi-plus"></span> Create
+                </button>
+                <button @onclick="BackToList" class="btn btn-secondary" type="button">
+                    <span class="oi oi-media-skip-backward" /> Back To List
+                </button>
+            </div>
+        </EditForm>
+    </div>
+</div>
+
+@code {
+    private CreateRentalDto _rental = new CreateRentalDto();
+    private FluentValidationValidator? _fluentValidationValidator;
+
+    private void CreateRental()
+    {
+        _rentalService.Create(_rental);
+        ToastService.ShowSuccess("Rental have been created");
+        _navigationManager.NavigateTo("/rentals");
+    }
+
+    private void BackToList()
+    {
+        _navigationManager.NavigateTo("/rentals");
+    }
+
+    private void AddDetail()
+    {
+        _rental.Details.Add(new CreateRentalDetailDto());
+    }
+
+    private void RemoveDetail(CreateRentalDetailDto detail)
+    {
+        _rental.Details.Remove(detail);
+    }
+}

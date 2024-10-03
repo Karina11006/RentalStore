@@ -1,0 +1,164 @@
+﻿@page "/cart"
+@inject ICartService CartService
+@inject CartStateService CartStateService
+
+@code {
+    private List<CartItemDto> _cartItems;
+    private decimal _totalAmount = 0;
+    private int _rentalDays = 1;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _cartItems = await CartService.GetCartItems();
+        _rentalDays = CartStateService.RentalDays;
+        CalculateTotalAmount();
+    }
+
+    private async Task RemoveFromCart(int equipmentId)
+    {
+        await CartService.RemoveFromCart(equipmentId);
+        _cartItems = await CartService.GetCartItems();
+        CalculateTotalAmount();
+    }
+
+    private async Task DecreaseQuantity(CartItemDto item)
+    {
+        if (item.Quantity > 1)
+        {
+            item.Quantity--;
+            await CartService.UpdateCartItemQuantity(item.Equipment.EquipmentId, item.Quantity);
+            CalculateTotalAmount();
+        }
+    }
+
+    private async Task IncreaseQuantity(CartItemDto item)
+    {
+        if (item.Quantity < item.Equipment.QuantityInStock)
+        {
+            item.Quantity++;
+            await CartService.UpdateCartItemQuantity(item.Equipment.EquipmentId, item.Quantity);
+            CalculateTotalAmount();
+        }
+    }
+
+    private void DecreaseDays()
+    {
+        if (_rentalDays > 1)
+        {
+            _rentalDays--;
+            CalculateTotalAmount();
+        }
+    }
+
+    private void IncreaseDays()
+    {
+        _rentalDays++;
+        CalculateTotalAmount();
+    }
+
+    private void CalculateTotalAmount()
+    {
+        _totalAmount = _cartItems.Sum(item => (decimal)item.Equipment.PricePerDay * item.Quantity * _rentalDays);
+        CartStateService.TotalAmount = _totalAmount;
+        CartStateService.RentalDays = _rentalDays;
+    }
+}
+
+<div class="container">
+    <h1 class="text-center my-2">Your cart</h1>
+
+    @if (_cartItems != null && _cartItems.Any())
+    {
+        @foreach (var item in _cartItems)
+        {
+            <div class="card mb-2">
+                <div class="row no-gutters">
+                    <div class="col-12 col-md-4 d-flex align-items-center">
+                        <div class="p-2 mx-2">
+                            <h5 class="card-title">@item.Equipment.Name</h5>
+                            <p class="card-text">Price: @item.Equipment.PricePerDay PLN</p>
+                            <p class="card-text">Available: @item.Equipment.QuantityInStock pcs</p>
+                        </div>
+                    </div>
+                    <div class="col-12 col-md-4 d-flex align-items-center justify-content-center">
+                        <div class="p-2 d-flex align-items-center">
+                            <button class="btn btn-outline-secondary mx-1" @onclick="() => DecreaseQuantity(item)">-</button>
+                            <span class="mx-2">@item.Quantity</span>
+                            <button class="btn btn-outline-secondary mx-1" @onclick="() => IncreaseQuantity(item)">+</button>
+                        </div>
+                    </div>
+                    <div class="col-12 col-md-4 d-flex align-items-center justify-content-end">
+                        <div class="p-2">
+                            <button type="button" class="btn btn-outline-danger mx-2" @onclick='() => RemoveFromCart(item.Equipment.EquipmentId)'>
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-x-lg" viewBox="0 0 16 16">
+                                    <path d="M2.146 2.854a.5.5 0 1 1 .708-.708L8 7.293l5.146-5.147a.5.5 0 0 1 .708.708L8.707 8l5.147 5.146a.5.5 0 0 1-.708.708L8 8.707l-5.146 5.147a.5.5 0 0 1-.708-.708L7.293 8z" />
+                                </svg>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        }
+        <div class="card mb-2">
+            <div class="row no-gutters">
+                <div class="col-12 col-md-4 d-flex align-items-center text-center">
+                    <div class="p-2 d-flex align-items-center">
+                        <h5 class="card-title m-0">Number of days: </h5>
+                    </div>
+                </div>
+                <div class="col-12 col-md-4 d-flex align-items-center justify-content-center">
+                    <div class="p-2 d-flex align-items-center justify-content-center">
+                        <button class="btn btn-outline-secondary mx-1" @onclick="DecreaseDays">-</button>
+                        <span class="mx-2">@_rentalDays day(s)</span>
+                        <button class="btn btn-outline-secondary mx-1" @onclick="IncreaseDays">+</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="text-right mt-3">
+            <h4 class="font-weight-bold">Total: @_totalAmount PLN</h4>
+        </div>
+        <div class="d-flex justify-content-end">
+            <a href="forms" class="btn btn-primary">Continue</a>
+        </div>
+    }
+    else
+    {
+        <div class="empty-cart-container">
+            <h6 class="text-center">Your shopping cart is empty. Rent your equipment now!</h6>
+            <a href="/equipment" class="btn btn-primary go-now-btn">Go now</a>
+        </div>
+    }
+</div>
+
+<style>
+    .card {
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        border: 1px solid #ddd;
+        border-radius: 5px;
+    }
+
+    .card-title {
+        font-weight: bold;
+    }
+
+    .p-2 {
+        padding: 0.5rem !important;
+    }
+
+    .empty-cart-container {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        height: 60vh;
+    }
+
+        .empty-cart-container h6 {
+            margin-bottom: 20px;
+        }
+
+    .go-now-btn {
+        width: auto;
+    }
+</style>

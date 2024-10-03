@@ -1,0 +1,250 @@
+﻿@page "/manage-equipment"
+@inherits LayoutComponentBase
+@inject IEquipmentService EquipmentService
+@inject ICategoryService CategoryService
+@inject IRentalService RentalService
+@inject IToastService ToastService
+@inject IJSRuntime _js
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h3>Manage Equipment</h3>
+    <NavLink class="btn btn-primary" href="/manage-equipment/categories">
+        <span class="oi oi-plus" aria-hidden="true"></span> Manage Categories
+    </NavLink>
+    <button class="btn btn-primary" @onclick="ShowAddModal">
+        <span class="oi oi-plus" aria-hidden="true"></span> Add Equipment
+    </button>
+</div>
+
+<div class="row mb-3">
+    <div class="col-md-4">
+        <input class="form-control" type="text" placeholder="Search by name..." @bind="searchTerm" />
+    </div>
+    <div class="col-md-4">
+        <select class="form-control" @bind="selectedCategory">
+            <option value="" disabled selected>Search by category...</option>
+            @foreach (var category in categories)
+            {
+                <option value="@category.CategoryId">@category.CategoryName</option>
+            }
+        </select>
+    </div>
+    <div class="col-md-4 d-flex align-items-end position-relative">
+        <button class="btn btn-info me-2" @onclick="SortByQuantity">Sort by Quantity</button>
+        <button class="btn btn-info me-2" @onclick="SortByPrice">Sort by Price</button>
+        <div class="position-relative">
+            <button class="btn btn-secondary" @onclick="FilterEquipment">Filter</button>
+            @if (isFilterApplied)
+            {
+                <button class="btn btn-danger clear-button" @onclick="ClearFilters">Clear</button>
+            }
+        </div>
+    </div>
+</div>
+
+@if (filteredEquipments == null)
+{
+    <p>Loading...</p>
+}
+else if (!filteredEquipments.Any())
+{
+    <p>No equipment found.</p>
+}
+else
+{
+    <table class="table table-striped table-bordered fancy-table">
+        <thead class="thead-dark">
+            <tr>
+                <th>Id</th>
+                <th>Image</th>
+                <th>Name</th>
+                <th>Category</th>
+                <th>Brand</th>
+                <th>Model</th>
+                <th>Availability</th>
+                <th>Condition</th>
+                <th>Quantity</th>
+                <th>Price</th>
+                <th>Action</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var equipment in filteredEquipments)
+            {
+                <tr>
+                    <td>@equipment.EquipmentId</td>
+                    <td><img src="@equipment.ImageUrl" width="24"></td>
+                    <td>@equipment.Name</td>
+                    <td>@equipment.CategoryName</td>
+                    <td>@equipment.Brand</td>
+                    <td>@equipment.Model</td>
+                    <td>@(equipment.Availability ? "Yes" : "No")</td>
+                    <td>@equipment.Condition</td>
+                    <td>@equipment.QuantityInStock</td>
+                    <td>@equipment.PricePerDay.ToString("C")</td>
+                    <td>
+                        <button class="btn btn-warning" @onclick="() => ShowEditModal(equipment)"><span class="oi oi-pencil" aria-hidden="true"></span> Edit</button>
+                        <button class="btn btn-danger" @onclick="() => DeleteEquipment(equipment.EquipmentId)"><span class="oi oi-delete" aria-hidden="true"></span> Delete</button>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+<AddOrUpdateEquipment @ref="addEditModal" OnSubmit="RefreshEquipment" />
+
+@code {
+    private IEnumerable<EquipmentDto> equipments;
+    private IEnumerable<EquipmentDto> filteredEquipments;
+    private IEnumerable<CategoryDto> categories;
+    private AddOrUpdateEquipment addEditModal;
+
+    private string searchTerm = "";
+    private string selectedCategory = "";
+    private string sortOrder = "name_asc";
+    private bool isFilterApplied = false;
+
+    protected override void OnInitialized()
+    {
+        LoadEquipment();
+        categories = CategoryService.GetAll();
+    }
+
+    private void LoadEquipment()
+    {
+        equipments = EquipmentService.GetAll();
+        FilterAndSortEquipment();
+    }
+
+    private void FilterAndSortEquipment(bool isApplied = false)
+    {
+        filteredEquipments = equipments;
+
+        if (!string.IsNullOrEmpty(searchTerm))
+        {
+            filteredEquipments = filteredEquipments.Where(e => e.Name.Contains(searchTerm, StringComparison.OrdinalIgnoreCase));
+        }
+
+        if (!string.IsNullOrEmpty(selectedCategory) && selectedCategory != "All Categories")
+        {
+            filteredEquipments = filteredEquipments.Where(e => e.CategoryId == int.Parse(selectedCategory));
+        }
+
+        filteredEquipments = sortOrder switch
+        {
+            "quantity_asc" => filteredEquipments.OrderBy(e => e.QuantityInStock),
+            "quantity_desc" => filteredEquipments.OrderByDescending(e => e.QuantityInStock),
+            "price_asc" => filteredEquipments.OrderBy(e => e.PricePerDay),
+            "price_desc" => filteredEquipments.OrderByDescending(e => e.PricePerDay),
+            _ => filteredEquipments
+        };
+
+        isFilterApplied = isApplied;
+    }
+
+    private void SetSortOrder(string order)
+    {
+        sortOrder = order;
+        FilterAndSortEquipment();
+    }
+
+    private void SortByQuantity()
+    {
+        if (sortOrder == "quantity_asc")
+        {
+            sortOrder = "quantity_desc";
+            ToastService.ShowInfo("Sortowanie od najwiekszej ilosci do najmniejszej");
+        }
+        else
+        {
+            sortOrder = "quantity_asc";
+            ToastService.ShowInfo("Sortowanie od najmniejszej ilosci do najwiekszej");
+        }
+        FilterAndSortEquipment(true);
+    }
+
+    private void SortByPrice()
+    {
+        if (sortOrder == "price_asc")
+        {
+            sortOrder = "price_desc";
+            ToastService.ShowInfo("Sortowanie od najdrozszych do najtanszych");
+        }
+        else
+        {
+            sortOrder = "price_asc";
+            ToastService.ShowInfo("Sortowanie od najtanszych do najdrozszych");
+        }
+        FilterAndSortEquipment(true);
+    }
+
+    private void FilterEquipment()
+    {
+        FilterAndSortEquipment(true);
+    }
+
+    private void ClearFilters()
+    {
+        searchTerm = "";
+        selectedCategory = "";
+        sortOrder = "name_asc";
+        isFilterApplied = false;
+        LoadEquipment();
+    }
+
+    private bool IsAnyFilterApplied()
+    {
+        return isFilterApplied;
+    }
+
+    private async Task DeleteEquipment(int id)
+    {
+        var confirm = await _js.InvokeAsync<bool>("confirm", $"Are You Sure You Want To Delete {equipments.FirstOrDefault(r => r.EquipmentId==id).Name}?");
+        if (confirm)
+        {
+            ToastService.ShowWarning($"{equipments.FirstOrDefault(r => r.EquipmentId==id).Name} has been removed");
+            EquipmentService.Delete(id);
+            LoadEquipment();
+        }
+    }
+
+    private void ShowAddModal()
+    {
+        addEditModal.Show();
+    }
+
+    private void ShowEditModal(EquipmentDto equipment)
+    {
+        addEditModal.Show(equipment);
+    }
+
+    private void RefreshEquipment()
+    {
+        LoadEquipment();
+    }
+}
+
+<style>
+    .btn-sm {
+        margin-right: 5px;
+    }
+
+    .clear-button {
+        position: absolute;
+        top: 0;
+        right: 0;
+        width: 100%;
+        height: 100%;
+        z-index: 1;
+        opacity: 1;
+    }
+
+    .ms-2 {
+        margin-left: 0.5rem;
+    }
+
+    .dropdown-toggle::after {
+        display: none;
+    }
+</style>

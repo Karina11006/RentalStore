@@ -1,0 +1,303 @@
+@namespace RentalStore.BlazorServer.Components
+@using Microsoft.AspNetCore.Mvc.Rendering
+@inject ICategoryService CategoryService
+@inject IEquipmentService EquipmentService
+@inject IServiceProvider ServiceProvider
+@inject IFileService FileService
+@inject IToastService ToastService
+@inject NavigationManager Navigation
+
+<div class="modal @(IsVisible ? "show" : "hide")" tabindex="-1">
+    <div class="modal-dialog modal-xl">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Add or update equipment</h5>
+            </div>
+            <div class="modal-body">
+                @if (equipment != null)
+                {
+                    <EditForm Model="equipment" OnValidSubmit="HandleValidSubmit">
+                        <DataAnnotationsValidator />
+                        <ValidationSummary />
+
+                        <div class="alert alert-danger" role="alert" hidden="@(validationErrors.Count == 0)">
+                            <ul>
+                                @foreach (var error in validationErrors)
+                                {
+                                    <li>@error</li>
+                                }
+                            </ul>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="name">Name</label>
+                                <InputText id="name" class="form-control" @bind-Value="equipment.Name" placeholder="Treadmill" />
+                                <ValidationMessage For="@(() => equipment.Name)" />
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="description">Description</label>
+                                <InputText id="description" class="form-control" @bind-Value="equipment.Description" placeholder="Specification" />
+                                <ValidationMessage For="@(() => equipment.Description)" />
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-4 mb-3">
+                                <label for="category">Category</label>
+                                <InputSelect id="category" class="form-control" @bind-Value="equipment.CategoryName" @onchange="OnCategoryChanged">
+                                    <option value="" disabled selected>Select a category</option>
+                                    @if (categories != null)
+                                    {
+                                        @foreach (var category in categories)
+                                        {
+                                            <option value="@category.CategoryName">@category.CategoryName</option>
+                                        }
+                                    }
+                                </InputSelect>
+                                <ValidationMessage For="@(() => equipment.CategoryName)" />
+                            </div>
+                            <div class="col-md-4 mb-3">
+                                <label for="brand">Brand</label>
+                                <InputText id="brand" class="form-control" @bind-Value="equipment.Brand" placeholder="Adidas" />
+                                <ValidationMessage For="@(() => equipment.Brand)" />
+                            </div>
+                            <div class="col-md-4 mb-3">
+                                <label for="model">Model</label>
+                                <InputText id="model" class="form-control" @bind-Value="equipment.Model" placeholder="Fussballliebe" />
+                                <ValidationMessage For="@(() => equipment.Model)" />
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-3 mb-3">
+                                <label for="condition">Condition</label>
+                                <InputSelect id="condition" class="form-control" @bind-Value="equipment.Condition">
+                                    <option value="" disabled selected>Select a condition</option>
+                                    @foreach (var condition in Enum.GetValues(typeof(Condition)).Cast<Condition>())
+                                    {
+                                        <option value="@condition">@condition</option>
+                                    }
+                                </InputSelect>
+                                <ValidationMessage For="@(() => equipment.Condition)" />
+                            </div>
+                            <div class="col-md-3 mb-3">
+                                <label for="quantity">Quantity</label>
+                                <InputNumber id="quantity" class="form-control" @bind-Value="equipment.QuantityInStock" />
+                                <ValidationMessage For="@(() => equipment.QuantityInStock)" />
+                            </div>
+                            <div class="col-md-3 mb-3">
+                                <label for="price">Price</label>
+                                <InputNumber id="price" class="form-control" @bind-Value="equipment.PricePerDay" />
+                                <ValidationMessage For="@(() => equipment.PricePerDay)" />
+                            </div>
+                            <div class="col-md-3 mb-3 d-flex align-items-center">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="availability" @bind="equipment.Availability">
+                                    <label class="form-check-label" for="availability">Available</label>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label>Image: </label>
+                                <InputFile OnChange="HandleImageUpload"></InputFile>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <img src="@imagePreviewUrl" class="img-thumbnail" width="150" />
+                            </div>
+                        </div>
+                        <div class="button-container">
+                            <button type="submit" class="btn btn-primary">Submit</button>
+                            <button type="button" class="btn btn-secondary" @onclick="CloseModal">Cancel</button>
+                        </div>
+                    </EditForm>
+                }
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .modal.show {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        background-color: rgba(0, 0, 0, 0.5);
+    }
+
+    .modal-dialog {
+        max-width: 1000px;
+        margin: 1.75rem auto;
+    }
+
+    .modal-content {
+        background-color: #fff;
+        border: 1px solid #dee2e6;
+        border-radius: .3rem;
+        box-shadow: 0 3px 9px rgba(0, 0, 0, 0.5);
+    }
+
+    .modal-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 1rem 1rem;
+        border-bottom: 1px solid #dee2e6;
+        border-top-left-radius: .3rem;
+        border-top-right-radius: .3rem;
+    }
+
+    .modal-body {
+        position: relative;
+        flex: 1 1 auto;
+        padding: 1rem;
+    }
+
+    .close {
+        padding: 0;
+        background-color: transparent;
+        border: 0;
+    }
+
+    .button-container {
+        display: flex;
+        justify-content: center;
+        gap: 10px;
+        margin-top: 20px;
+    }
+
+    .img-thumbnail {
+        display: block;
+        margin: 0 auto;
+    }
+</style>
+
+@code {
+    [Parameter] public EventCallback OnSubmit { get; set; }
+    private EquipmentDto equipment;
+    private List<CategoryDto> categories;
+    private bool IsVisible { get; set; }
+    private List<string> validationErrors = new List<string>();
+    private string imagePreviewUrl = "/images/no-image-icon.png";
+    private string baseUrl;
+    private bool isImageUploaded = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        categories = CategoryService.GetAll();
+        baseUrl = Navigation.BaseUri;
+    }
+
+    public void Show(EquipmentDto equipmentToEdit = null)
+    {
+        validationErrors.Clear();
+        isImageUploaded = false; 
+        if (equipmentToEdit != null)
+        {
+            equipment = equipmentToEdit;
+            imagePreviewUrl = string.IsNullOrEmpty(equipment.ImageUrl)
+                ? GetCategoryImageUrl(equipment.CategoryName) ?? "/images/no-image-icon.png"
+                : equipment.ImageUrl;
+        }
+        else
+        {
+            equipment = new EquipmentDto();
+            imagePreviewUrl = "/images/no-image-icon.png";
+        }
+
+        IsVisible = true;
+        StateHasChanged();
+    }
+
+    private async Task HandleValidSubmit()
+    {
+        if (ValidateEquipment())
+        {
+            var selectedCategory = categories.FirstOrDefault(c => c.CategoryName == equipment.CategoryName);
+            if (!isImageUploaded && string.IsNullOrEmpty(equipment.ImageUrl))
+            {
+                equipment.ImageUrl = selectedCategory?.ImageUrl ?? "/images/no-image-icon.png";
+            }
+
+            if (equipment.EquipmentId == 0)
+            {
+                EquipmentService.Create(equipment);
+                ToastService.ShowSuccess("Equipment have been added");
+            }
+            else
+            {
+                EquipmentService.Update(equipment.EquipmentId, equipment);
+                ToastService.ShowSuccess("Equipment have been updated");
+            }
+
+            IsVisible = false;
+            await OnSubmit.InvokeAsync();
+            StateHasChanged();
+        }
+    }
+
+    private bool ValidateEquipment()
+    {
+        validationErrors.Clear();
+        var validator = new CreateEquipmentDtoValidator();
+        var validationResult = validator.Validate(equipment);
+        if (!validationResult.IsValid)
+        {
+            foreach (var error in validationResult.Errors)
+            {
+                validationErrors.Add(error.ErrorMessage);
+            }
+            return false;
+        }
+        return true;
+    }
+
+    private async Task HandleImageUpload(InputFileChangeEventArgs e)
+    {
+        if (e.GetMultipleFiles().Count > 0)
+        {
+            foreach (var file in e.GetMultipleFiles())
+            {
+                System.IO.FileInfo fileInfo = new System.IO.FileInfo(file.Name);
+                if (fileInfo.Extension.ToLower() == ".png")
+                {
+                    var relativePath = await FileService.UploadFile(file);
+
+                    var formattedBaseUrl = baseUrl.Remove(baseUrl.Length - 1);
+
+                    equipment.ImageUrl = $"{formattedBaseUrl}{relativePath}";
+                    imagePreviewUrl = equipment.ImageUrl;
+                    isImageUploaded = true;
+                    StateHasChanged();
+                }
+                else
+                {
+                    ToastService.ShowToast(ToastLevel.Warning, "Please select .png file only");
+                    return;
+                }
+            }
+        }
+    }
+
+    private void OnCategoryChanged(ChangeEventArgs e)
+    {
+        var selectedCategoryName = e.Value.ToString();
+        var selectedCategory = categories.FirstOrDefault(c => c.CategoryName == selectedCategoryName);
+        if (!isImageUploaded)
+        {
+            imagePreviewUrl = selectedCategory?.ImageUrl ?? "/images/no-image-icon.png";
+        }
+        StateHasChanged();
+    }
+
+    private string GetCategoryImageUrl(string categoryName)
+    {
+        var category = categories.FirstOrDefault(c => c.CategoryName == categoryName);
+        return category?.ImageUrl;
+    }
+
+    private void CloseModal()
+    {
+        IsVisible = false;
+        StateHasChanged();
+    }
+}

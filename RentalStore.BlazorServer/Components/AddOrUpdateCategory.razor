@@ -1,0 +1,210 @@
+@namespace RentalStore.BlazorServer.Components
+@inject ICategoryService CategoryService
+@inject Blazored.Toast.Services.IToastService ToastService
+@inject IFileService FileService
+@inject NavigationManager Navigation
+
+<div class="modal @(IsVisible ? "show" : "hide")" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">@((category?.CategoryId == 0 ? "Add" : "Update") + " Category")</h5>
+            </div>
+            <div class="modal-body">
+                @if (category != null)
+                {
+                    <EditForm Model="category" OnValidSubmit="HandleValidSubmit">
+                        <DataAnnotationsValidator />
+                        <ValidationSummary />
+
+                        <div class="alert alert-danger" role="alert" hidden="@(validationErrors.Count == 0)">
+                            <ul>
+                                @foreach (var error in validationErrors)
+                                {
+                                    <li>@error</li>
+                                }
+                            </ul>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="categoryName">Category Name</label>
+                            <InputText id="categoryName" class="form-control" @bind-Value="category.CategoryName" placeholder="Category Name" />
+                            <ValidationMessage For="@(() => category.CategoryName)" />
+                        </div>
+                        <div class="form-group">
+                            <label for="description">Description</label>
+                            <InputTextArea id="description" class="form-control" @bind-Value="category.Description" placeholder="Description" />
+                            <ValidationMessage For="@(() => category.Description)" />
+                        </div>
+                        <div class="form-group">
+                            <div class="col-md-6 mb-3">
+                                <label>Image: </label>
+                                <InputFile OnChange="HandleImageUpload"></InputFile>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                @if (!string.IsNullOrEmpty(category.ImageUrl))
+                                {
+                                    <img src="@category.ImageUrl" class="img-thumbnail" width="150" />
+                                    <ValidationMessage For="@(() => category.ImageUrl)" />
+                                }
+                            </div>
+                        </div>
+                        <div class="button-container">
+                            <button type="submit" class="btn btn-primary">Submit</button>
+                            <button type="button" class="btn btn-secondary" @onclick="CloseModal">Cancel</button>
+                        </div>
+                    </EditForm>
+                }
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .modal.show {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        background-color: rgba(0, 0, 0, 0.5);
+    }
+
+    .modal-dialog {
+        max-width: 800px;
+        margin: 1.75rem auto;
+    }
+
+    .modal-content {
+        background-color: #fff;
+        border: 1px solid #dee2e6;
+        border-radius: .3rem;
+        box-shadow: 0 3px 9px rgba(0, 0, 0, 0.5);
+    }
+
+    .modal-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 1rem 1rem;
+        border-bottom: 1px solid #dee2e6;
+        border-top-left-radius: .3rem;
+        border-top-right-radius: .3rem;
+    }
+
+    .modal-body {
+        position: relative;
+        flex: 1 1 auto;
+        padding: 1rem;
+    }
+
+    .close {
+        padding: 0;
+        background-color: transparent;
+        border: 0;
+    }
+
+    .button-container {
+        display: flex;
+        justify-content: center;
+        gap: 10px;
+        margin-top: 20px;
+    }
+</style>
+
+@code {
+    [Parameter] public EventCallback OnSubmit { get; set; }
+    private CategoryDto category;
+    private bool IsVisible { get; set; }
+    private List<string> validationErrors = new List<string>();
+    private string baseUrl;
+
+    protected override void OnInitialized()
+    {
+        baseUrl = Navigation.BaseUri;
+    }
+
+    public void Show(CategoryDto categoryToEdit = null)
+    {
+        validationErrors.Clear();
+        if (categoryToEdit != null)
+        {
+            category = categoryToEdit;
+        }
+        else
+        {
+            category = new CategoryDto();
+            category.ImageUrl = "/images/no-image-icon.png";
+        }
+
+        IsVisible = true;
+        StateHasChanged();
+    }
+
+    private async Task HandleValidSubmit()
+    {
+        if (ValidateCategory())
+        {
+
+            if (category.CategoryId == 0)
+            {
+                CategoryService.Create(category);
+                ToastService.ShowSuccess("Category saved successfully");
+            }
+            else
+            {
+                CategoryService.Update(category);
+                ToastService.ShowInfo("Category updated successfully");
+            }
+
+            IsVisible = false;
+            await OnSubmit.InvokeAsync();
+            StateHasChanged();
+        }
+    }
+
+    private async Task HandleImageUpload(InputFileChangeEventArgs e)
+    {
+        if (e.GetMultipleFiles().Count > 0)
+        {
+            foreach (var file in e.GetMultipleFiles())
+            {
+                System.IO.FileInfo fileInfo = new System.IO.FileInfo(file.Name);
+                if (fileInfo.Extension.ToLower() == ".png")
+                {
+                    var relativePath = await FileService.UploadFile(file);
+
+                    var formattedBaseUrl = baseUrl.Remove(baseUrl.Length-1);
+
+                    category.ImageUrl = $"{formattedBaseUrl}{relativePath}";
+                    StateHasChanged();
+                }
+                else
+                {
+                    ToastService.ShowToast(ToastLevel.Warning, "Please select .png file only");
+                    return;
+                }
+            }
+        }
+    }
+
+    private bool ValidateCategory()
+    {
+        validationErrors.Clear();
+        var validator = new CreateCategoryDtoValidator();
+        var validationResult = validator.Validate(category);
+        if (!validationResult.IsValid)
+        {
+            foreach (var error in validationResult.Errors)
+            {
+                validationErrors.Add(error.ErrorMessage);
+            }
+            return false;
+        }
+        return true;
+    }
+
+    private void CloseModal()
+    {
+        IsVisible = false;
+        StateHasChanged();
+    }
+}

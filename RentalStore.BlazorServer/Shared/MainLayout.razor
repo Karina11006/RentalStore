@@ -1,0 +1,122 @@
+﻿@inherits LayoutComponentBase
+@inject NavigationManager Navigation
+
+<div class="sidebar-layout">
+    <div class="main-content @mainContentClass">
+        <div class="top-bar d-flex justify-content-between align-items-center">
+            <div class="dropdown">
+                <button class="btn btn-outline-primary" type="button" id="dropdownMenuButton" data-bs-toggle="dropdown" aria-expanded="false">
+                    <span class="oi oi-menu"></span>
+                </button>
+                <ul class="dropdown-menu" aria-labelledby="dropdownMenuButton">
+                    <li><a class="dropdown-item" href="/">Home Page</a></li>
+                    <li><a class="dropdown-item" href="/manage-equipment">Manage Equipment</a></li>
+                    <li><a class="dropdown-item" href="/rentals">Manage Rentals</a></li>
+                </ul>
+            </div>
+            <h2 class="page-title">Admin Panel</h2>
+        </div>
+        <div class="content">
+            @Body
+        </div>
+    </div>
+</div>
+
+<BlazoredToasts Position="Blazored.Toast.Configuration.ToastPosition.TopRight"
+    Timeout="10"
+    IconType="Blazored.Toast.Configuration.IconType.FontAwesome"
+    SuccessClass="success-toast-override"
+    SuccessIcon="fa fa-thumbs-up"
+    ErrorIcon="fa fa-bug"
+    WarningIcon="fa fa-warning"
+    InfoIcon="fa fa-info-circle">
+</BlazoredToasts>
+
+@code {
+    private bool isSidebarVisible;
+    private string sidebarClass => isSidebarVisible ? "visible" : "hidden";
+    private string mainContentClass => isSidebarVisible ? "shifted" : "expanded";
+
+    protected override void OnInitialized()
+    {
+        UpdateSidebarVisibility();
+        Navigation.LocationChanged += (sender, args) => UpdateSidebarVisibility();
+    }
+
+    private void UpdateSidebarVisibility()
+    {
+        var currentUri = Navigation.Uri;
+        isSidebarVisible = currentUri.Contains("/manage-equipment") || currentUri.Contains("/manage-rentals") || currentUri.Contains("/manage-categories");
+        StateHasChanged();
+    }
+
+    private void ToggleSidebar()
+    {
+        isSidebarVisible = !isSidebarVisible;
+        StateHasChanged();
+    }
+}
+
+<style>
+    body {
+        font-family: 'Roboto', sans-serif;
+        background-color: #f8f9fa;
+        margin: 0;
+        padding: 0;
+        height: 100%;
+        overflow-x: hidden;
+    }
+
+    .sidebar-layout {
+        display: flex;
+        height: 100vh;
+    }
+
+    .sidebar {
+        width: 250px;
+        position: absolute;
+        top: 0;
+        left: 0;
+        height: 100%;
+        background-color: transparent;
+        transition: transform 0.3s ease-in-out;
+        z-index: 1000;
+        box-shadow: 2px 0 5px rgba(0, 0, 0, 0.1);
+    }
+
+        .sidebar.hidden {
+            transform: translateX(-100%);
+        }
+
+        .sidebar.visible {
+            transform: translateX(0);
+        }
+
+    .main-content {
+        transition: margin-left 0.3s ease-in-out;
+        flex-grow: 1;
+        padding: 20px;
+        margin-left: 0;
+    }
+
+    .top-bar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 1rem;
+        background-color: white;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    }
+
+    .page-title {
+        margin: 0;
+        font-weight: 500;
+        font-size: 1.5rem;
+    }
+
+    .content {
+        padding: 2rem;
+        height: calc(100vh - 56px); 
+        overflow-y: auto;
+    }
+</style>

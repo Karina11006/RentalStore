@@ -1,0 +1,162 @@
+﻿@page "/equipment"
+@inject IEquipmentService _equipmentService
+@inject ICategoryService _categoryService
+@inject ICartService CartService
+@inject NotificationService _notificationService
+@inject IToastService ToastService
+
+
+<PageTitle>Equipment list</PageTitle>
+
+
+<div class="container">
+    <div class="d-flex flex-row justify-content-around">
+        <div class="mw-10">
+            <h1 class="text-center text-primary mt-3" style="display: inline-block">Sports Collection</h1>
+        </div>
+    </div>
+
+    <div class="container" style="padding: 10px;">
+        <div class="d-flex flex-row">
+            <div class="p-2 dropdown">
+                <button class="btn btn-primary dropdown-toggle" @onclick="() => ToggleDropdown(1)">
+                    Sort
+                </button>
+                @if (isDropdownOpen1)
+                {
+                    <div class="dropdown-menu show" style="position: absolute;">
+                        <a class="dropdown-item" @onclick='() => SortBy("NameAsc")' style="cursor: pointer;">Ascending by Name</a>
+                        <a class="dropdown-item" @onclick='() => SortBy("NameDesc")' style="cursor: pointer;">Descending by Name</a>
+                    </div>
+                }
+            </div>
+            <div class="p-2 dropdown">
+                <button class="btn btn-primary dropdown-toggle" @onclick="() => ToggleDropdown(2)">
+                    Category
+                </button>
+                @if (isDropdownOpen2)
+                {
+                    <div class="dropdown-menu show" style="position: absolute;">
+                        @foreach (var c in _categoryList)
+                        {
+                            <a class="dropdown-item" @onclick="@(e => FilterByCategory(c.CategoryName))" style="cursor: pointer;">@c.CategoryName</a>
+                        }
+                    </div>
+                }
+            </div>
+            <div class="p-2">
+                <button type="button" class="btn btn-outline-secondary" @onclick='() => ShowAllEquipments()'>
+                    Clear
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-x-lg" viewBox="0 0 16 16">
+                        <path d="M2.146 2.854a.5.5 0 1 1 .708-.708L8 7.293l5.146-5.147a.5.5 0 0 1 .708.708L8.707 8l5.147 5.146a.5.5 0 0 1-.708.708L8 8.707l-5.146 5.147a.5.5 0 0 1-.708-.708L7.293 8z" />
+                    </svg>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div class="container">
+        <div class="row justify-content-center">
+            @foreach (var e in _equipmentList)
+            {
+                <div class="card m-2" style="width: 18rem;">
+                    <img class="card-img-top img-fluid custom-img" src="@e.ImageUrl" alt="Card image cap">
+                    <div class="card-body align-content-center pb-0">
+                        <h5 class="card-title fw-bold m-0">@e.Name</h5>
+                    </div>
+                    <div class="card-body align-content-end">
+                        <p class="card-text">@e.Model</p>
+                        <p class="card-text">@e.Condition</p>
+                        <a href="/equipment/@e.EquipmentId" class="btn btn-outline-primary w-100 mb-1">See more</a>
+                        <a class="btn btn-primary w-100" @onclick="() => AddToCart(e)">Add to Cart</a>
+                    </div>
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
+<style>
+    .custom-img {
+        width: 100%;
+        height: 200px; 
+        object-fit: cover;
+        object-position: center;
+    }
+</style>
+
+@code {
+    private IEnumerable<EquipmentDto> _equipmentList = new List<EquipmentDto>();
+    private IEnumerable<EquipmentDto> _allEquipment = new List<EquipmentDto>();
+    private IEnumerable<CategoryDto> _categoryList = new List<CategoryDto>();
+
+    protected override async Task OnInitializedAsync()
+    {
+        _allEquipment = await _equipmentService.GetAll();
+        _equipmentList = _allEquipment;
+        _categoryList = await _categoryService.GetAll();
+    }
+
+    private bool isDropdownOpen1 = false;
+    private bool isDropdownOpen2 = false;
+
+    private void ToggleDropdown(int dropdownNumber)
+    {
+        if (dropdownNumber == 1)
+        {
+            isDropdownOpen1 = !isDropdownOpen1;
+            isDropdownOpen2 = false;
+        }
+        else if (dropdownNumber == 2)
+        {
+            isDropdownOpen2 = !isDropdownOpen2;
+            isDropdownOpen1 = false; 
+        }
+    }
+
+    private void SortBy(string sortOrder)
+    {
+        switch (sortOrder)
+        {
+            case "NameAsc":
+                _equipmentList = _allEquipment.OrderBy(e => e.Name);
+                break;
+            case "NameDesc":
+                _equipmentList = _allEquipment.OrderByDescending(e => e.Name);
+                break;
+        }
+
+        isDropdownOpen1 = false;
+        isDropdownOpen2 = false;
+    }
+
+    private void SelectItem(string item)
+    {
+        isDropdownOpen1 = false;
+        isDropdownOpen2 = false;
+        Console.WriteLine($"Selected: {item}");
+    }
+
+    private void FilterByCategory(string categoryName)
+    {
+        _equipmentList = _allEquipment.Where(e => e.CategoryName == categoryName).ToList();
+
+        isDropdownOpen1 = false;
+        isDropdownOpen2 = false;
+    }
+
+    private void ShowAllEquipments()
+    {
+        _equipmentList = _allEquipment;
+    }
+
+    private async Task AddToCart(EquipmentDto equipment)
+    {
+        if (equipment == null)
+        {
+            throw new ArgumentNullException(nameof(equipment), "Equipment cannot be null");
+        }
+        await CartService.AddToCart(equipment);
+        ToastService.ShowInfo($"{equipment.Name} has been added to the cart");
+    }
+}

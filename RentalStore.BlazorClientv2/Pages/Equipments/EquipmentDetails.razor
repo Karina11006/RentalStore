@@ -1,0 +1,115 @@
+﻿@page "/equipment/{id:int}"
+@inject IEquipmentService EquipmentService
+@inject ICartService CartService
+@inject IToastService ToastService
+
+@code {
+    [Parameter]
+    public int Id { get; set; }
+
+    private EquipmentDto equipment;
+
+    protected override async Task OnInitializedAsync()
+    {
+        equipment = await EquipmentService.GetById(Id);
+    }
+
+    private async Task AddToCart(EquipmentDto equipment)
+    {
+        if (equipment == null)
+        {
+            throw new ArgumentNullException(nameof(equipment), "Equipment cannot be null");
+        }
+        await CartService.AddToCart(equipment);
+        ToastService.ShowInfo($"{equipment.Name} has been added to the cart");
+    }
+}
+
+<div class="container main-content">
+    @if (equipment != null)
+    {
+        <div class="text-center mb-4">
+            <h1 class="display-4 fw-bold">@equipment.Name</h1>
+        </div>
+        <div class="d-flex justify-content-center mb-4">
+            <div class="position-relative w-70">
+                <img src="@equipment.ImageUrl" alt="@equipment.Name" class="img-fluid rounded mx-auto d-block" />
+            </div>
+        </div>
+        <div class="text-center mb-4">
+            <p class="lead">@equipment.Description</p>
+        </div>
+        <div class="row mb-4 justify-content-center">
+            <div class="col-12 col-md-6 text-center">
+                <h5 class="font-weight-bold d-inline">Brand:</h5>
+                <p class="d-inline">@equipment.Brand</p>
+            </div>
+        </div>
+        <div class="row mb-4 justify-content-center">
+            <div class="col-12 col-md-6 text-center">
+                <h5 class="font-weight-bold d-inline">Model:</h5>
+                <p class="d-inline">@equipment.Model</p>
+            </div>
+        </div>
+        <div class="row mb-4 justify-content-center">
+            <div class="col-12 col-md-6 text-center">
+                <h5 class="font-weight-bold d-inline">Availability:</h5>
+                <p class="d-inline">@equipment.QuantityInStock pcs</p>
+            </div>
+        </div>
+        <div class="row mb-4 justify-content-center">
+            <div class="col-12 col-md-6 text-center">
+                <h5 class="font-weight-bold d-inline">Rental price (per day):</h5>
+                <p class="d-inline">@equipment.PricePerDay</p>
+            </div>
+        </div>
+
+        <div class="text-center my-4">
+            <button class="btn btn-primary btn-lg" @onclick="() => AddToCart(equipment)">Add to cart</button>
+        </div>
+    }
+    else
+    {
+        <p>Loading...</p>
+    }
+</div>
+
+<style>
+    .img-fluid {
+        max-width: 100%;
+        height: auto;
+    }
+
+    .font-weight-bold {
+        font-weight: bold;
+    }
+
+    .lead {
+        font-size: 1.25rem;
+    }
+
+    .w-70 {
+        width: 70%;
+    }
+
+    .d-inline {
+        display: inline;
+    }
+
+    .d-inline-block {
+        display: inline-block;
+        margin-right: 10px;
+    }
+
+    .text-center div {
+        margin-bottom: 1rem;
+    }
+
+    .main-content {
+        border-left: 1px solid #ddd;
+        border-right: 1px solid #ddd;
+        box-shadow: -5px 0 5px -5px rgba(0, 0, 0, 0.1), 5px 0 5px -5px rgba(0, 0, 0, 0.1);
+        padding: 20px;
+        background-color: #fff;
+    }
+</style>

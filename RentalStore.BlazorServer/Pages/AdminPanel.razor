@@ -1,0 +1,36 @@
+﻿@page "/"
+@inherits LayoutComponentBase
+
+<div class="admin-welcome-container">
+    <div class="welcome-header">
+        <h1>Welcome to the Admin Panel</h1>
+    </div>
+    <div class="admin-buttons">
+        <NavLink class="btn btn-primary" href="/manage-equipment/categories">
+            <span class="oi oi-wrench" aria-hidden="true"></span> Manage Categories
+        </NavLink>
+        <NavLink class="btn btn-primary" href="/manage-equipment">
+            <span class="oi oi-dashboard" aria-hidden="true"></span> Manage Equipments
+        </NavLink>
+        <NavLink class="btn btn-primary" href="/rentals">
+            <span class="oi oi-tag" aria-hidden="true"></span> Manage Rentals
+        </NavLink>
+    </div>
+</div>
+
+<style>
+    .admin-welcome-container {
+        text-align: center;
+        margin-top: 50px;
+    }
+
+    .welcome-header {
+        margin-bottom: 30px;
+    }
+
+    .admin-buttons {
+        display: flex;
+        justify-content: center;
+        gap: 20px;
+    }
+</style>

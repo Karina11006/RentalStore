@@ -1,0 +1,131 @@
+﻿@page "/forms"
+@using Radzen
+@using Radzen.Blazor
+@inject IRentalClientService RentalService
+@inject ICartService CartService
+@inject NavigationManager Navigation
+@inject CartStateService CartStateService
+
+@if (!orderPlaced)
+{
+    <RadzenTemplateForm TItem="CreateRentalDto" Data="@rental" Submit="@HandleValidSubmit">
+        <div class="container">
+            <div class="d-flex justify-content-center align-items-center" style="height: 80vh;">
+                <div class="col-md-6">
+                    <h1 class="text-center mb-4">Make an order</h1>
+
+                    <RadzenTemplateFormField TItem="CreateRentalDto" Property="CustomerName">
+                        <RadzenLabel Text="Name" class="mb-0" Component="CustomerName" />
+                        <RadzenTextBox Style="width: 100%;" class="m-0" @bind-Value="rental.CustomerName" Name="CustomerName" />
+                        <RadzenRequiredValidator Component="CustomerName" class="text-danger" Text="Name is required" />
+                    </RadzenTemplateFormField>
+
+                    <RadzenTemplateFormField TItem="CreateRentalDto" Property="CustomerSurname">
+                        <RadzenLabel Text="Surname" Component="CustomerSurname" class="mb-0 mt-2" />
+                        <RadzenTextBox Style="width: 100%;" @bind-Value="rental.CustomerSurname" Name="CustomerSurname" />
+                        <RadzenRequiredValidator Component="CustomerSurname" class="text-danger" Text="Surname is required" />
+                    </RadzenTemplateFormField>
+
+                    <RadzenTemplateFormField TItem="CreateRentalDto" Property="CustomerEmail">
+                        <RadzenLabel Text="Email address" Component="CustomerEmail" class="mb-0 mt-2" />
+                        <RadzenTextBox Style="width: 100%;" class="m-0" @bind-Value="rental.CustomerEmail" Name="CustomerEmail" />
+                        <RadzenRequiredValidator Component="CustomerEmail" class="text-danger" Text="Email is required" />
+                        <RadzenRegexValidator Component="CustomerEmail" Pattern=@regexEmail class="text-danger" Text="Invalid email" />
+                    </RadzenTemplateFormField>
+
+                    <RadzenTemplateFormField TItem="CreateRentalDto" Property="CustomerPhone">
+                        <RadzenLabel Text="Phone" class="mb-0 mt-2" Component="CustomerPhone" />
+                        <RadzenTextBox Style="width: 100%;" @bind-Value="rental.CustomerPhone" Name="CustomerPhone" />
+                        <RadzenRequiredValidator Component="CustomerPhone" class="text-danger" Text="Phone is required" />
+                        <RadzenRegexValidator Component="CustomerPhone" Pattern=@regexPhone class="text-danger" Text="Invalid phone number" />
+                    </RadzenTemplateFormField>
+
+                    <RadzenButton ButtonType="ButtonType.Submit" class="btn btn-primary btn-block mb-2 mt-3" Text="Send" />
+                    <RadzenButton ButtonType="ButtonType.Button" class="btn btn-outline-primary btn-block mb-2" Text="Back" Click="BackToCardPage" />
+                    <RadzenButton ButtonType="ButtonType.Button" class="btn btn-outline-danger btn-block mb-2" Text="Cancel" Click="HandleCancel" />
+                </div>
+            </div>
+        </div>
+    </RadzenTemplateForm>
+}
+else
+{
+    <div class="center-content">
+        <div class="text-center">
+            <h2>Congratulations!</h2>
+            <p>Your order was placed successfully.</p>
+            <RadzenButton ButtonType="ButtonType.Button" class="btn btn-primary" Text="Back to shop" Click="BackToEquipmentPage" />
+        </div>
+    </div>
+}
+
+<style>
+    .center-content {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        height: 80vh;
+        text-align: center;
+    }
+
+        .center-content h2 {
+            margin-bottom: 20px;
+        }
+
+        .center-content button {
+            width: auto;
+        }
+</style>
+
+@code {
+    private CreateRentalDto rental = new CreateRentalDto();
+    private bool orderPlaced = false;
+    private string regexEmail = "^[\\w-\\.]+@([\\w-]+\\.)+[\\w-]{2,4}$";
+    private string regexPhone = "^[+]*[(]{0,1}[0-9]{1,4}[)]{0,1}[-\\s\\./0-9]*$";
+
+    private async Task HandleValidSubmit(CreateRentalDto rental)
+    {
+        rental.RentalDate = DateTime.UtcNow;
+        rental.ReturnDate = DateTime.UtcNow.AddDays(CartStateService.RentalDays);
+        rental.Total = CartStateService.TotalAmount;
+        rental.Status = RentalStatusDto.Active;
+
+        List<CartItemDto> cartItems = await CartService.GetCartItems();
+        foreach (var c in cartItems)
+        {
+            rental.Details.Add(
+                new CreateRentalDetailDto
+                    {
+                        EquipmentId = c.Equipment.EquipmentId,
+                        Count = c.Quantity
+                    }
+            );
+        }
+
+        await RentalService.CreateRentalAsync(rental); 
+        await CartService.ClearCart();
+        CartStateService.TotalAmount = 0;
+        CartStateService.RentalDays = 1;
+
+        orderPlaced = true;
+        rental = new CreateRentalDto(); 
+    }
+
+    private void BackToCardPage()
+    {
+        Navigation.NavigateTo("/cart");
+    }
+
+    private void BackToEquipmentPage()
+    {
+        Navigation.NavigateTo("/equipment");
+    }
+
+    private async Task HandleCancel()
+    {
+        await CartService.ClearCart();
+        CartStateService.TotalAmount = 0;
+        CartStateService.RentalDays = 1;
+        Navigation.NavigateTo("/equipment");
+    }
+}
